@@ -18,6 +18,9 @@ SUFFIX=conf
 # OpenVPN binary
 OPENVPN=/usr/sbin/openvpn
 
+# Use dialog/Xdialog both work
+DIALOG=dialog
+
 # Use sudo? (so script can be executed as normal
 # user with sudo rights. Leave blank (SUDO='') if
 # this is not required.
@@ -33,9 +36,6 @@ SUDO='sudo'
 # Current version and author
 MENUVERSION=1.0.1
 AUTHOR="L.S. Keijser <keijser@stone-it.com>"
-
-# Use dialog/Xdialog both work
-DIALOG=dialog
 
 # The title string displayed in the back dialog
 BACKTITLE="OpenVPN menu "$MENUVERSION" by $AUTHOR"
