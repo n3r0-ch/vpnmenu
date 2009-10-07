@@ -9,16 +9,6 @@
 ################ VARIABLES ################
 ###########################################
 
-# Current version and author
-MENUVERSION=1.0.1
-AUTHOR="L.S. Keijser <keijser@stone-it.com>"
-
-# Use dialog/Xdialog both work
-DIALOG=dialog
-
-# The title string displayed in the back dialog
-BACKTITLE="OpenVPN menu "$MENUVERSION" by $AUTHOR"
-
 # Where do the configurations reside
 VPNDIR=/etc/openvpn
 
@@ -36,6 +26,20 @@ SUDO='sudo'
 ###########################################
 ######### MAIN SCRIPT STARTS HERE ######### 
 ###########################################
+##### SO STOP EDITING UNLESS YOU KNOW #####
+############ WTF YOU'RE DOING #############
+###########################################
+
+# Current version and author
+MENUVERSION=1.0.1
+AUTHOR="L.S. Keijser <keijser@stone-it.com>"
+
+# Use dialog/Xdialog both work
+DIALOG=dialog
+
+# The title string displayed in the back dialog
+BACKTITLE="OpenVPN menu "$MENUVERSION" by $AUTHOR"
+
 
 # Check for existence of required tools
 for f in $DIALOG awk dialog sed; do
