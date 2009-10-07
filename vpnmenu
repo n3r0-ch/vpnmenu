@@ -1,0 +1,223 @@
+#!/bin/bash
+#---------------------------------------------------------------#
+# Menu-based control system for managing OpenVPN connections.   #
+#                                                               #
+# L.S. Keijser <keijser@stone-it.com>                           #
+#---------------------------------------------------------------#
+
+###########################################
+################ VARIABLES ################
+###########################################
+
+# Current version and author
+MENUVERSION=1.0.1
+AUTHOR="L.S. Keijser <keijser@stone-it.com>"
+
+# Use dialog/Xdialog both work
+DIALOG=dialog
+
+# The title string displayed in the back dialog
+BACKTITLE="OpenVPN menu "$MENUVERSION" by $AUTHOR"
+
+# Where do the configurations reside
+VPNDIR=/etc/openvpn
+
+# For which files to scan (leave out the dot '.')
+SUFFIX=conf
+
+# OpenVPN binary
+OPENVPN=/usr/sbin/openvpn
+
+# Use sudo? (so script can be executed as normal
+# user with sudo rights. Leave blank (SUDO='') if
+# this is not required.
+SUDO='sudo'
+
+###########################################
+######### MAIN SCRIPT STARTS HERE ######### 
+###########################################
+
+# Check for existence of required tools
+for f in $DIALOG awk dialog sed; do
+    if [ -x /bin/$f -o -x /usr/bin/$f ]; then
+        continue
+    else
+        echo It seems that $f is missing.
+        echo Please install it and run this script again.
+        exit 1
+    fi
+done
+
+function test_maxsize {
+    echo "$DIALOG --print-maxsize" > /tmp/sedscript
+    run_sed
+    MAX_H=`echo $sed_out|awk '{print $2}'|sed -e s/,//g`
+    MAX_H=`expr $MAX_H - 4`
+    MAX_W=`echo $sed_out|awk '{print $3}'`
+    MAX_W=`expr $MAX_W - 4`
+}
+
+# Pause function, used for debugging purposes only ;)
+function pauseme {
+    echo
+    echo -n "Press Enter to continue."
+    read something
+}
+
+function run_sed {
+    sh /tmp/sedscript 2> /tmp/sed_out
+    rm /tmp/sedscript
+    sed_out=`cat /tmp/sed_out`
+    rm /tmp/sed_out
+}
+
+function main_menu {
+    echo "$DIALOG --backtitle \"$BACKTITLE\" \
+        --trim --clear --nocancel \
+        --title \"Main menu\" \
+        --menu \"Make your choice\" $MAX_H $MAX_W 5 \
+        Start \"Start a VPN connection\" \
+        Kill \"Kill an active VPN connection\" \
+        List \"List all active VPN connections\" \
+        \" \" \"\" \
+        Quit \"End this menu\"" \
+        > /tmp/sedscript
+    run_sed
+    submenu_$sed_out
+}
+
+function showconfs {
+    typeset -a gen_confs
+    gencnt=0
+    for s in `ls -1 $VPNDIR/*.$SUFFIX`; do
+        cnf_small=`echo $s | sed s-$VPNDIR/-- | sed s-\.$SUFFIX--`
+        gen_confs[$gencnt]="$cnf_small $s"
+        gencnt=`expr $gencnt + 1`
+    done
+    if [ $gencnt -gt $MAX_H ];then
+        gencnt=`expr $MAX_H - 4`
+    fi
+    echo "$DIALOG --backtitle \"$BACKTITLE\" \
+        --trim --clear --title \"Configurations found\" \
+        --menu \"Select a configuration to start\" \
+        $MAX_H $MAX_W $gencnt \
+        `echo \"${gen_confs[*]}\"`" > /tmp/sedscript
+    run_sed
+}
+
+function submenu_Start {
+    showconfs
+    if [ ! -z "$sed_out" ]; then
+        $SUDO $OPENVPN --config $VPNDIR/$sed_out.conf
+        $DIALOG --backtitle "$BACKTITLE" \
+            --trim --clear --title "VPN Configuration" \
+            --msgbox "Configuration $sed_out started!" \
+            $MAX_H $MAX_W
+    fi
+    main_menu
+}
+
+function showandkill {
+    typeset -a gen_procs
+    gencnt=0
+    for p in `ps ax|grep "openvpn --config"|grep -v grep|\
+    awk {'print $1" "$7'}`; do
+        p_pid=`echo $p | awk {'print $1'}`
+        p_conf=`echo $p | awk {'print $2'}`
+        gen_procs[$gencnt]="$p_pid $p_conf"
+        gencnt=`expr $gencnt + 1`
+    done
+    if [ $gencnt -gt $MAX_H ];then
+        gencnt=`expr $MAX_H - 4`
+    fi
+    if [ $gencnt -eq 0 ]; then
+        $DIALOG --backtitle "$BACKTITLE"\
+            --trim --clear --title "Active VPN Connections" \
+            --msgbox "No active OpenVPN connections found!" \
+            $MAX_H $MAX_W
+            main_menu
+    else
+        echo "$DIALOG --backtitle \"$BACKTITLE\" --trim \
+            --clear --title \"Active OpenVPN connections\" \
+            --menu \"Select a connection to stop\" \
+            $MAX_H $MAX_W `expr $gencnt / 2` \
+            `echo \"${gen_procs[*]}\"`" > /tmp/sedscript
+        run_sed
+    fi
+}
+
+function showactive {
+    typeset -a gen_procs
+    gencnt=0
+    for p in `ps ax|grep "openvpn --config"|grep -v grep\
+    |awk {'print $1" "$7'}`; do
+        p_pid=`echo $p | awk {'print $1'}`
+        p_conf=`echo $p | awk {'print $2'}`
+        gen_procs[$gencnt]="$p_pid $p_conf"
+        gencnt=`expr $gencnt + 1`
+    done
+    if [ $gencnt -gt $MAX_H ];then
+        gencnt=`expr $MAX_H - 4`
+    fi
+    if [ $gencnt -eq 0 ]; then
+        $DIALOG --backtitle "$BACKTITLE"\
+            --trim --clear --title "Active VPN Connections" \
+            --msgbox "No active OpenVPN connections found!" \
+            $MAX_H $MAX_W
+            main_menu
+    else
+        echo -e "PID\tConfiguration file\n" > /tmp/tmptailbox
+        for (( i = 0 ; i < ${#gen_procs[@]} ; i++ ));do
+            echo -ne "${gen_procs[$i]}\t" >> /tmp/tmptailbox
+            let i=$i+1
+            echo -e "${gen_procs[$i]}\n" >> /tmp/tmptailbox
+        done
+        echo "$DIALOG --backtitle \"$BACKTITLE\" --trim \
+            --clear --title \"Active OpenVPN connections\" \
+            --tailbox /tmp/tmptailbox \
+            $MAX_H $MAX_W" \
+            > /tmp/sedscript
+        run_sed
+        rm -f /tmp/tmptailbox
+    fi
+}
+
+function submenu_List {
+    showactive
+    main_menu
+}
+
+function submenu_Kill {
+    showandkill
+    if [ ! -z "$sed_out" ]; then
+        $SUDO kill -9 $sed_out
+        $DIALOG --backtitle "$BACKTITLE" \
+            --trim --clear --title "VPN Connection killed" \
+            --msgbox "PID $sed_out killed!" $MAX_H $MAX_W
+    fi
+    main_menu
+}
+
+# Catch 'Quit' button
+function submenu_Quit {
+    clear
+    exit 0
+}
+
+# Catch unknown/empty menu items
+function submenu_ {
+    clear
+    main_menu
+}
+
+# Test for maximum screen size if running in console
+if [ $DIALOG == "dialog" ]; then
+    test_maxsize
+else
+    # We're running X so these are (hopefully) nice values
+    MAX_H=30
+    MAX_W=100
+fi
+
+# Thunderbirds are go!
+main_menu
