@@ -2,7 +2,7 @@
 #---------------------------------------------------------------#
 # Menu-based control system for managing OpenVPN connections.   #
 #                                                               #
-# L.S. Keijser <keijser@stone-it.com>                           #
+# L.S. Keijser <leon@gotlinux.nl>	                        #
 #---------------------------------------------------------------#
 
 ###########################################
@@ -28,9 +28,6 @@ SUDO='sudo'
 
 ###########################################
 ######### MAIN SCRIPT STARTS HERE ######### 
-###########################################
-##### SO STOP EDITING UNLESS YOU KNOW #####
-############ WTF YOU'RE DOING #############
 ###########################################
 
 # Current version and author
@@ -76,13 +73,17 @@ function run_sed {
 }
 
 function main_menu {
+    if [ $DIALOG == "dialog" ]; then
+        test_maxsize
+    fi
     echo "$DIALOG --backtitle \"$BACKTITLE\" \
         --trim --clear --nocancel \
         --title \"Main menu\" \
-        --menu \"Make your choice\" $MAX_H $MAX_W 5 \
+        --menu \"Make your choice\" $MAX_H $MAX_W 6 \
         Start \"Start a VPN connection\" \
         Kill \"Kill an active VPN connection\" \
         List \"List all active VPN connections\" \
+        Tail \"Tail /var/log/messages\" \
         \" \" \"\" \
         Quit \"End this menu\"" \
         > /tmp/sedscript
@@ -112,6 +113,7 @@ function showconfs {
 function submenu_Start {
     showconfs
     if [ ! -z "$sed_out" ]; then
+	echo $sed_out > /tmp/sedout.tmp
         $SUDO $OPENVPN --config $VPNDIR/$sed_out.conf
         $DIALOG --backtitle "$BACKTITLE" \
             --trim --clear --title "VPN Configuration" \
@@ -199,6 +201,13 @@ function submenu_Kill {
             --trim --clear --title "VPN Connection killed" \
             --msgbox "PID $sed_out killed!" $MAX_H $MAX_W
     fi
+    main_menu
+}
+
+function submenu_Tail {
+    $SUDO $DIALOG --backtitle "$BACKTITLE" \
+        --trim --clear --title "Tailing /var/log/messages" \
+        --tailbox /var/log/messages $MAX_H $MAX_W
     main_menu
 }
 
