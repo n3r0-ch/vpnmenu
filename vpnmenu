@@ -2,7 +2,7 @@
 #---------------------------------------------------------------#
 # Menu-based control system for managing OpenVPN connections.   #
 #                                                               #
-# L.S. Keijser <leon@gotlinux.nl>	                        #
+# Felix Imobersteg <felix@whatwedo.ch>	                        #
 #---------------------------------------------------------------#
 
 ###########################################
@@ -31,8 +31,8 @@ SUDO='sudo'
 ###########################################
 
 # Current version and author
-MENUVERSION=1.0.1
-AUTHOR="L.S. Keijser <keijser@stone-it.com>"
+MENUVERSION=1.0.2
+AUTHOR="Felix Imobersteg <felix@whatwedo.ch"
 
 # The title string displayed in the back dialog
 BACKTITLE="OpenVPN menu "$MENUVERSION" by $AUTHOR"
@@ -83,7 +83,7 @@ function main_menu {
         Start \"Start a VPN connection\" \
         Kill \"Kill an active VPN connection\" \
         List \"List all active VPN connections\" \
-        Tail \"Tail /var/log/messages\" \
+        Tail \"Tail /var/log/syslog\" \
         \" \" \"\" \
         Quit \"End this menu\"" \
         > /tmp/sedscript
@@ -114,7 +114,7 @@ function submenu_Start {
     showconfs
     if [ ! -z "$sed_out" ]; then
 	echo $sed_out > /tmp/sedout.tmp
-        $SUDO $OPENVPN --config $VPNDIR/$sed_out.conf
+        $SUDO $OPENVPN --config $VPNDIR/$sed_out.conf --syslog --daemon
         $DIALOG --backtitle "$BACKTITLE" \
             --trim --clear --title "VPN Configuration" \
             --msgbox "Configuration $sed_out started!" \
@@ -206,8 +206,8 @@ function submenu_Kill {
 
 function submenu_Tail {
     $SUDO $DIALOG --backtitle "$BACKTITLE" \
-        --trim --clear --title "Tailing /var/log/messages" \
-        --tailbox /var/log/messages $MAX_H $MAX_W
+        --trim --clear --title "Tailing /var/log/syslog" \
+        --tailbox /var/log/syslog $MAX_H $MAX_W
     main_menu
 }
 
